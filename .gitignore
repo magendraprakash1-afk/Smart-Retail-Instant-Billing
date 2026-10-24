@@ -1,0 +1,28 @@
+# Operating System & IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local Database & SQLite files
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.venv/
+venv/
+env/
+
+# Environment Variables & Secrets
+.env
+.env.local
+*.pem
+
+# Logs
+*.log

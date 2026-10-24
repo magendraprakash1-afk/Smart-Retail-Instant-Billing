@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="QuickBill Pro - High-Speed POS & Billing Software with SQLite Database Engine, Customer Ordering, and Instant Message Delivery (WhatsApp & SMS).">
+    <meta name="theme-color" content="#10b981">
+    <title>QuickBill Pro — SQLite POS Billing & Customer Ordering</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- ======================================================================
+         Top Application Header & Live Metrics Bar
+         ====================================================================== -->
+    <header class="app-header">
+        <div class="header-inner">
+            <div class="brand-section">
+                <div class="brand-logo-icon">⚡</div>
+                <div class="brand-details">
+                    <span class="brand-title" id="brandStoreName">QuickBill Pro</span>
+                    <span class="brand-tagline">
+                        <span class="live-indicator-dot"></span>
+                        <span id="brandTagline">SQLite Database • Order Products • Message Bills</span>
+                    </span>
+                </div>
+            </div>
+
+            <!-- Navigation Tabs -->
+            <nav class="nav-tabs-container" aria-label="Main Navigation">
+                <button class="nav-tab-btn active" id="navBtnPos" data-target="view-pos">
+                    <span>🛒</span> Order & POS <small class="search-shortcut-hint">F1</small>
+                </button>
+                <button class="nav-tab-btn" id="navBtnInventory" data-target="view-inventory">
+                    <span>📦</span> Inventory & Stocks
+                    <span class="nav-pill-badge" id="topNavLowStockBadge" style="display: none;">0 Alerts</span>
+                </button>
+                <button class="nav-tab-btn" id="navBtnInvoices" data-target="view-invoices">
+                    <span>📜</span> Orders & Bills <small class="search-shortcut-hint">F4</small>
+                </button>
+                <button class="nav-tab-btn" id="navBtnStockLogs" data-target="view-stock-logs">
+                    <span>📊</span> Stock Audit Log
+                </button>
+                <button class="nav-tab-btn" id="navBtnDemandExpiry" data-target="view-demand-expiry">
+                    <span>🧠</span> Demand & Expiry AI
+                    <span class="nav-pill-badge" id="topNavDemandExpiryBadge" style="display: none;">0 Alerts</span>
+                </button>
+                <button class="nav-tab-btn" id="navBtnSqlite" data-target="view-sqlite">
+                    <span>🗄️</span> SQLite Database
+                </button>
+                <button class="nav-tab-btn" id="navBtnSettings" data-target="view-settings">
+                    <span>⚙️</span> Settings
+                </button>
+            </nav>
+
+            <!-- Live Performance Metrics -->
+            <div class="header-metrics-ticker">
+                <div class="metric-item">
+                    <span class="metric-label">Today's Sales</span>
+                    <span class="metric-value accent" id="metricTodaySales">₹0</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Orders Placed</span>
+                    <span class="metric-value" id="metricTotalBills">0</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Total Revenue</span>
+                    <span class="metric-value" id="metricTotalSales">₹0</span>
+                </div>
+            </div>
+
+            <div class="header-actions">
+                <button class="btn btn-primary btn-sm" onclick="window.Store.exportSQLiteFile()" title="Download binary .sqlite database">
+                    💾 Export SQLite
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ======================================================================
+         Main Content Area
+         ====================================================================== -->
+    <main class="main-wrapper">
+
+        <!-- ==================================================================
+             VIEW 1: Order Products & POS Billing Terminal
+             ================================================================== -->
+        <section class="app-view active" id="view-pos">
+            <div class="pos-layout-grid">
+                
+                <!-- Catalog Section (Left) -->
+                <div class="pos-catalog-panel">
+                    <!-- Search Bar & Order By Sorting -->
+                    <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+                        <div class="catalog-search-bar" style="flex: 1; min-width: 250px;">
+                            <span class="search-icon">🔍</span>
+                            <input type="text" id="posSearchInput" class="search-input" 
+                                   placeholder="Search products by name, SKU, or category to order..." 
+                                   oninput="window.Billing.setSearchQuery(this.value)">
+                            <span class="search-shortcut-hint">F2</span>
+                        </div>
+
+                        <!-- Order By / Sort Filter -->
+                        <div style="display: flex; align-items: center; gap: 0.4rem;">
+                            <span style="font-size: 0.76rem; color: var(--text-muted); font-weight: 600;">Sort By:</span>
+                            <select class="filter-select" id="posSortSelect" onchange="window.Billing.setProductOrderBy(this.value)">
+                                <option value="name ASC">Product Name (A-Z)</option>
+                                <option value="name DESC">Product Name (Z-A)</option>
+                                <option value="price ASC">Price (Low to High)</option>
+                                <option value="price DESC">Price (High to Low)</option>
+                                <option value="stock ASC">Stock (Lowest First)</option>
+                                <option value="stock DESC">Stock (Highest First)</option>
+                                <option value="category ASC">Category</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Category Chips Filter -->
+                    <div class="category-filter-chips" id="categoryFilterContainer">
+                        <button class="chip-btn active" onclick="document.querySelectorAll('.chip-btn').forEach(b => b.classList.remove('active')); this.classList.add('active'); window.Billing.setCategory('ALL')">All Products</button>
+                        <button class="chip-btn" onclick="document.querySelectorAll('.chip-btn').forEach(b => b.classList.remove('active')); this.classList.add('active'); window.Billing.setCategory('Accessories')">🖱️ Accessories</button>
+                        <button class="chip-btn" onclick="document.querySelectorAll('.chip-btn').forEach(b => b.classList.remove('active')); this.classList.add('active'); window.Billing.setCategory('Peripherals')">🎧 Peripherals</button>
+                        <button class="chip-btn" onclick="document.querySelectorAll('.chip-btn').forEach(b => b.classList.remove('active')); this.classList.add('active'); window.Billing.setCategory('Displays')">🖥️ Displays</button>
+                        <button class="chip-btn" onclick="document.querySelectorAll('.chip-btn').forEach(b => b.classList.remove('active')); this.classList.add('active'); window.Billing.setCategory('Office')">💡 Office</button>
+                        <button class="chip-btn" onclick="document.querySelectorAll('.chip-btn').forEach(b => b.classList.remove('active')); this.classList.add('active'); window.Billing.setCategory('Audio')">🔊 Audio</button>
+                        <button class="chip-btn" onclick="document.querySelectorAll('.chip-btn').forEach(b => b.classList.remove('active')); this.classList.add('active'); window.Billing.setCategory('Cables')">🔌 Cables</button>
+                        <button class="chip-btn" onclick="document.querySelectorAll('.chip-btn').forEach(b => b.classList.remove('active')); this.classList.add('active'); window.Billing.setCategory('Storage')">💾 Storage</button>
+                        <button class="chip-btn" onclick="document.querySelectorAll('.chip-btn').forEach(b => b.classList.remove('active')); this.classList.add('active'); window.Billing.setCategory('Power')">🔋 Power</button>
+                        <button class="chip-btn" onclick="document.querySelectorAll('.chip-btn').forEach(b => b.classList.remove('active')); this.classList.add('active'); window.Billing.setCategory('Bags')">🎒 Bags</button>
+                    </div>
+
+                    <!-- Products Grid -->
+                    <div class="products-grid" id="posCatalogGrid">
+                        <!-- Populated dynamically by Billing.renderCatalog() -->
+                    </div>
+                </div>
+
+                <!-- Live Cart & Checkout Section (Right) -->
+                <div class="pos-cart-panel">
+                    <div class="cart-header">
+                        <div class="cart-title-wrap">
+                            <h2 class="cart-title">Order Summary</h2>
+                            <span class="bill-number-chip" id="currentBillNumberDisplay">#QB-INIT</span>
+                        </div>
+                        <button class="btn-clear-cart" id="btnClearCartBtn" onclick="window.Billing.clearCart()" title="Empty current order">
+                            🗑️ Clear
+                        </button>
+                    </div>
+
+                    <!-- Cart Item Rows -->
+                    <div class="cart-items-list" id="posCartList">
+                        <!-- Populated dynamically by Billing.renderCart() -->
+                    </div>
+
+                    <!-- Customer Phone & Details -->
+                    <div class="customer-pos-section">
+                        <div class="customer-section-title">
+                            <span>📲</span> Customer Bill Dispatch Details
+                        </div>
+
+                        <div class="form-group-pos">
+                            <label class="pos-input-label" for="customerPhoneInput">Customer Mobile No. (For WhatsApp/SMS) *</label>
+                            <div class="phone-input-wrap">
+                                <span class="phone-prefix-addon" id="posPhonePrefixHint">+91</span>
+                                <input type="tel" id="customerPhoneInput" class="phone-pos-input" 
+                                       placeholder="9876543210" maxlength="15">
+                            </div>
+                        </div>
+
+                        <div class="row-dual">
+                            <div class="form-group-pos">
+                                <label class="pos-input-label" for="customerNameInput">Customer Name</label>
+                                <input type="text" id="customerNameInput" class="pos-input" 
+                                       placeholder="John Doe" value="John Doe">
+                            </div>
+
+                            <div class="form-group-pos">
+                                <label class="pos-input-label" for="paymentMethodSelect">Payment Mode</label>
+                                <select id="paymentMethodSelect" class="pos-input">
+                                    <option value="UPI">UPI / GPay / PhonePe</option>
+                                    <option value="Cash" selected>Cash</option>
+                                    <option value="Credit Card">Credit Card</option>
+                                    <option value="Debit Card">Debit Card</option>
+                                    <option value="Store Credit">Store Credit</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row-dual">
+                            <div class="form-group-pos">
+                                <label class="pos-input-label" for="cartDiscountInput">Discount (%)</label>
+                                <input type="number" id="cartDiscountInput" class="pos-input" min="0" max="100" value="0"
+                                       oninput="window.Billing.discountPercent = Math.min(100, Math.max(0, parseFloat(this.value) || 0)); window.Billing.renderCart();">
+                            </div>
+
+                            <div class="form-group-pos">
+                                <label class="pos-input-label" for="orderNotesInput">Order Note</label>
+                                <input type="text" id="orderNotesInput" class="pos-input" placeholder="e.g. Gift pack / Priority">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Cart Financial Totals -->
+                    <div class="cart-summary-block">
+                        <div class="summary-row">
+                            <span>Subtotal:</span>
+                            <span id="summarySubtotal">₹0</span>
+                        </div>
+                        <div class="summary-row text-success" id="summaryDiscountRow" style="display: none;">
+                            <span>Discount:</span>
+                            <span id="summaryDiscountAmount">-₹0</span>
+                        </div>
+                        <div class="summary-row" id="summaryTaxRow">
+                            <span id="summaryTaxRateLabel">Tax (18%):</span>
+                            <span id="summaryTaxAmount">+₹0</span>
+                        </div>
+                        <div class="summary-grand-total">
+                            <span class="grand-total-label">Grand Total:</span>
+                            <span class="grand-total-val" id="summaryGrandTotal">₹0</span>
+                        </div>
+                    </div>
+
+                    <!-- Checkout CTA Button -->
+                    <button class="btn-checkout-execute" id="btnExecuteCheckout" onclick="window.Billing.executeCheckout()" disabled>
+                        <div class="btn-checkout-left">
+                            <span>⚡</span>
+                            <span>Place Order & Send Bill via Message</span>
+                        </div>
+                        <div class="btn-checkout-badge">
+                            <span id="btnCheckoutTotalSpan">₹0</span>
+                            <small>(F8)</small>
+                        </div>
+                    </button>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- ==================================================================
+             VIEW 2: Inventory & Stock Control (SQLite Backed)
+             ================================================================== -->
+        <section class="app-view" id="view-inventory">
+            <div class="inventory-view-header">
+                <div>
+                    <h1 class="view-heading-title">Inventory & Stock Management (SQLite)</h1>
+                    <p class="view-heading-desc">Monitor stock levels, execute quick restocks, and order new stock from suppliers.</p>
+                </div>
+                <div style="display: flex; gap: 0.6rem;">
+                    <button class="btn btn-secondary" onclick="window.Inventory.openSupplierOrderModal()">
+                        <span>📦</span> Order Stock from Supplier
+                    </button>
+                    <button class="btn btn-primary" id="btnOpenAddProductModal" onclick="window.Inventory.openAddProductModal()">
+                        <span>➕</span> Add New Product
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="stats-cards-grid">
+                <div class="stat-card">
+                    <div class="stat-icon-wrap units">📦</div>
+                    <div class="stat-content">
+                        <span class="stat-label">Total Units In Stock</span>
+                        <span class="stat-value" id="statTotalUnits">0</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon-wrap valuation">💰</div>
+                    <div class="stat-content">
+                        <span class="stat-label">Stock Retail Value</span>
+                        <span class="stat-value" id="statTotalValuation">₹0</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon-wrap warning">⚠️</div>
+                    <div class="stat-content">
+                        <span class="stat-label">Low Stock Warnings</span>
+                        <span class="stat-value" id="statLowStockCount">0</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon-wrap danger">🚫</div>
+                    <div class="stat-content">
+                        <span class="stat-label">Out of Stock Items</span>
+                        <span class="stat-value" id="statOutOfStockCount">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controls & Filters Bar -->
+            <div class="inventory-controls-bar">
+                <div class="controls-left-group">
+                    <input type="text" class="pos-input" style="min-width: 250px;" id="inventorySearchInput"
+                           placeholder="Filter by product name, SKU..." 
+                           oninput="window.Inventory.setSearchQuery(this.value)">
+
+                    <select class="filter-select" id="inventoryStatusFilter" onchange="window.Inventory.setFilterStatus(this.value)">
+                        <option value="ALL">All Stock Levels</option>
+                        <option value="LOW_STOCK">⚠️ Low Stock Alerts Only</option>
+                        <option value="OUT_OF_STOCK">🚫 Out of Stock Only</option>
+                        <option value="HEALTHY">✅ Healthy Stock Only</option>
+                        <option value="NEAR_EXPIRY">⏳ Near Expiry (&lt; 30 Days)</option>
+                        <option value="EXPIRED">🔴 Expired Stock Only</option>
+                    </select>
+
+                    <select class="filter-select" id="inventoryCategoryFilter" onchange="window.Inventory.setCategoryFilter(this.value)">
+                        <option value="ALL">All Categories</option>
+                        <option value="Electronics">Electronics</option>
+                        <option value="Groceries">Groceries</option>
+                        <option value="Apparel">Apparel</option>
+                        <option value="Lifestyle">Lifestyle</option>
+                    </select>
+
+                    <select class="filter-select" id="inventorySortSelect" onchange="window.Inventory.setInventoryOrderBy(this.value)">
+                        <option value="name ASC">Order By: Name (A-Z)</option>
+                        <option value="name DESC">Order By: Name (Z-A)</option>
+                        <option value="stock ASC">Order By: Stock (Low to High)</option>
+                        <option value="stock DESC">Order By: Stock (High to Low)</option>
+                        <option value="price ASC">Order By: Price (Low to High)</option>
+                        <option value="price DESC">Order By: Price (High to Low)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Inventory Data Table -->
+            <div class="table-responsive-container">
+                <table class="modern-data-table" id="inventoryTable">
+                    <thead>
+                        <tr>
+                            <th>Product Name & SKU</th>
+                            <th>Category</th>
+                            <th>Selling Price</th>
+                            <th>Cost & Margin</th>
+                            <th>Current Stock</th>
+                            <th>Min Alert</th>
+                            <th>Quick Restock</th>
+                            <th>Order / Restock</th>
+                            <th class="text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventoryTableBody">
+                        <!-- Populated by Inventory.renderInventory() -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Supplier Purchase Orders Table -->
+            <div style="margin-top: 2rem;">
+                <h3 style="font-size: 1.2rem; color: #fff; margin-bottom: 0.8rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <span>🚚</span> Supplier Stock Purchase Orders (Re-ordering Stock)
+                </h3>
+                <div class="table-responsive-container">
+                    <table class="modern-data-table">
+                        <thead>
+                            <tr>
+                                <th>PO Number</th>
+                                <th>Product</th>
+                                <th>Supplier</th>
+                                <th>Qty Ordered</th>
+                                <th>Total Cost</th>
+                                <th>Status</th>
+                                <th class="text-right">Shipment Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="supplierOrdersTableBody">
+                            <!-- Populated by Inventory.renderSupplierOrders() -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================================================================
+             VIEW 3: Orders Ledger & Message History
+             ================================================================== -->
+        <section class="app-view" id="view-invoices">
+            <div class="inventory-view-header">
+                <div>
+                    <h2 class="view-heading-title">Orders Ledger & Message Dispatch History</h2>
+                    <p class="view-heading-desc">Inspect all customer orders stored in SQLite, view message delivery statuses, re-send WhatsApp/SMS bills, or void orders.</p>
+                </div>
+                <div>
+                    <input type="text" class="pos-input" id="invoiceSearchInput" placeholder="Search bill #, customer, mobile..." style="min-width: 280px;">
+                </div>
+            </div>
+
+            <div class="table-responsive-container">
+                <table class="modern-data-table" id="invoicesTable">
+                    <thead>
+                        <tr>
+                            <th>Bill Number</th>
+                            <th>Date & Time</th>
+                            <th>Customer & Phone</th>
+                            <th>Items</th>
+                            <th>Grand Total</th>
+                            <th>Message Status</th>
+                            <th class="text-right">Message Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="invoicesTableBody">
+                        <!-- Populated dynamically by App.renderInvoicesTable() -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- ==================================================================
+             VIEW 4: Stock Movement Audit Log
+             ================================================================== -->
+        <section class="app-view" id="view-stock-logs">
+            <div class="inventory-view-header">
+                <div>
+                    <h2 class="view-heading-title">Stock Movement & Sales Audit Log</h2>
+                    <p class="view-heading-desc">Transparent SQLite ledger of all inventory decrements from orders, restocks, and supplier deliveries.</p>
+                </div>
+            </div>
+
+            <div class="table-responsive-container">
+                <table class="modern-data-table" id="stockLogsTable">
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Action Type</th>
+                            <th>Product / Ref</th>
+                            <th>Change (Qty)</th>
+                            <th>New Stock</th>
+                            <th>Details & Audit Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody id="stockLogsTableBody">
+                        <!-- Populated by Inventory.renderStockLogs() -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- ==================================================================
+             VIEW 4.5: AI Demand Forecasting & Near-Expiry Shelf-Life Radar
+             ================================================================== -->
+        <section class="app-view" id="view-demand-expiry">
+            <div class="inventory-view-header">
+                <div>
+                    <h2 class="view-heading-title">🧠 AI Demand Forecasting & Shelf-Life Radar</h2>
+                    <p class="view-heading-desc">Analyzes previous month sales velocity to forecast high-demand products for reordering and monitors batches approaching expiration to prevent inventory loss.</p>
+                </div>
+                <div style="display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: 0.4rem; background: var(--bg-surface-elevated); padding: 0.35rem 0.75rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+                        <span style="font-size: 0.82rem; color: var(--text-muted);">Analysis Period:</span>
+                        <select id="demandPeriodSelect" class="filter-select" style="background: transparent; border: none; padding: 0.2rem 0.4rem; font-weight: 600; color: var(--primary);" onchange="window.DemandExpiry.setPeriod(this.value)">
+                            <option value="PREV_MONTH">Previous Calendar Month (Sep 2026)</option>
+                            <option value="LAST_30_DAYS">Last 30 Days Sales Velocity</option>
+                            <option value="ALL_HISTORY">Full Historical Baseline (StockSense)</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" onclick="window.DemandExpiry.renderAll()" title="Recalculate demand run rates and expiry countdowns">
+                        ⚡ Recalculate Forecast
+                    </button>
+                </div>
+            </div>
+
+            <!-- 4 Dynamic KPI Cards -->
+            <div class="stats-cards-grid" style="margin-bottom: 1.5rem;">
+                <div class="stat-card">
+                    <div class="stat-icon-wrap warning">🔥</div>
+                    <div class="stat-content">
+                        <span class="stat-label">High-Demand Reorders Needed</span>
+                        <span class="stat-value" id="statDemandReordersCount" style="color: #f59e0b;">0</span>
+                        <small style="color: var(--text-muted); font-size: 0.75rem;">≤ 14 days stock runway</small>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon-wrap danger">⏳</div>
+                    <div class="stat-content">
+                        <span class="stat-label">Products Near Expiry (&lt; 30d)</span>
+                        <span class="stat-value" id="statNearExpiryCount" style="color: #f43f5e;">0</span>
+                        <small style="color: var(--text-muted); font-size: 0.75rem;">Requires immediate clearance/sale</small>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon-wrap valuation">💰</div>
+                    <div class="stat-content">
+                        <span class="stat-label">At-Risk Expiring Inventory</span>
+                        <span class="stat-value" id="statAtRiskCapital" style="color: #f43f5e;">₹0</span>
+                        <small style="color: var(--text-muted); font-size: 0.75rem;">Capital tied in near-expiry stock</small>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon-wrap units">📦</div>
+                    <div class="stat-content">
+                        <span class="stat-label">Estimated Reorder Investment</span>
+                        <span class="stat-value" id="statTotalReorderCapital" style="color: var(--primary);">₹0</span>
+                        <small style="color: var(--text-muted); font-size: 0.75rem;">To replenish 30-day buffer stock</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Subtab Switcher -->
+            <div style="display: flex; gap: 0.6rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.75rem;">
+                <button class="ai-subtab-btn active" data-subtab="demand" onclick="window.DemandExpiry.setSubtab('demand')">
+                    📊 Previous Month Demand & Reorder Forecast
+                </button>
+                <button class="ai-subtab-btn" data-subtab="expiry" onclick="window.DemandExpiry.setSubtab('expiry')">
+                    ⏳ Near-Expiry Stock Radar & Liquidation
+                </button>
+            </div>
+
+            <!-- Common Controls & Filters Bar -->
+            <div class="inventory-controls-bar" style="margin-bottom: 1rem;">
+                <div class="controls-left-group">
+                    <input type="text" class="pos-input" style="min-width: 250px;" id="demandSearchInput"
+                           placeholder="Filter by product name, SKU, category..." 
+                           oninput="window.DemandExpiry.setSearchQuery(this.value)">
+
+                    <select class="filter-select" id="demandCategoryFilter" onchange="window.DemandExpiry.setCategoryFilter(this.value)">
+                        <option value="ALL">All Categories</option>
+                        <option value="Electronics">Electronics</option>
+                        <option value="Accessories">Accessories</option>
+                        <option value="Cables">Cables</option>
+                        <option value="Office">Office</option>
+                        <option value="Audio">Audio</option>
+                        <option value="Displays">Displays</option>
+                        <option value="Networking">Networking</option>
+                        <option value="Power">Power</option>
+                        <option value="Bags">Bags</option>
+                    </select>
+
+                    <select class="filter-select" id="demandUrgencyFilter" onchange="window.DemandExpiry.setUrgencyFilter(this.value)">
+                        <option value="ALL">All Urgency Levels</option>
+                        <option value="REORDER_ONLY">📦 Reorder Recommended Only</option>
+                        <option value="CRITICAL">🔴 Critical Risk Only (≤ 7d runway)</option>
+                        <option value="HIGH">🟠 High Demand Only (≤ 15d runway)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- PANEL 1: Demand & Reorder Forecast -->
+            <div id="panelDemandForecast" style="display: block;">
+                <div class="table-responsive-container">
+                    <table class="modern-data-table">
+                        <thead>
+                            <tr>
+                                <th>Product & SKU</th>
+                                <th>Previous Month Sales & Velocity</th>
+                                <th>Current Stock</th>
+                                <th>Stock Runway (Days Left)</th>
+                                <th>Demand Status</th>
+                                <th>Suggested Reorder Qty</th>
+                                <th class="text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="demandForecastTableBody">
+                            <!-- Populated by DemandExpiry.renderDemandTable() -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- PANEL 2: Expiry Radar & Liquidation -->
+            <div id="panelExpiryRadar" style="display: none;">
+                <div class="table-responsive-container">
+                    <table class="modern-data-table">
+                        <thead>
+                            <tr>
+                                <th>Product & SKU</th>
+                                <th>Expiry Date</th>
+                                <th>Countdown & Shelf-Life</th>
+                                <th>Units in Stock</th>
+                                <th>Capital at Risk</th>
+                                <th>Recommended Action</th>
+                                <th class="text-right">Clearance Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="expiryRadarTableBody">
+                            <!-- Populated by DemandExpiry.renderExpiryTable() -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- ==================================================================
+             VIEW 5: SQLite Database Management & Interactive SQL Console
+             ================================================================== -->
+        <section class="app-view" id="view-sqlite">
+            <div class="inventory-view-header">
+                <div>
+                    <h2 class="view-heading-title">🗄️ SQLite Database Manager & SQL Console</h2>
+                    <p class="view-heading-desc">Inspect real SQLite 3 database, run custom SQL queries, export the binary `.sqlite` database, or import Excel/CSV/SQLite files locally (zero server upload).</p>
+                </div>
+                <div style="display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center;">
+                    <button class="btn btn-whatsapp" onclick="window.App.importStockSenseDefault()" title="Instant 1-Click Import of StockSense_Dashboard_Sample_Data.xlsx into SQLite (No Upload)">
+                        ⚡ Import StockSense Excel Data
+                    </button>
+                    <label class="btn btn-primary" style="cursor: pointer;" title="Select any .xlsx, .xls, .csv, or .sqlite file to import into SQLite locally (Zero server upload)">
+                        📂 Import File (Excel / CSV / SQLite)
+                        <input type="file" id="sqliteFileInput" accept=".xlsx,.xls,.csv,.sqlite,.db" style="display: none;" onchange="window.App.handleUniversalFileImport(this.files[0])">
+                    </label>
+                    <button class="btn btn-secondary" onclick="window.Store.exportSQLiteFile()" title="Download binary .sqlite database">
+                        📥 Download .sqlite Database
+                    </button>
+                </div>
+            </div>
+
+            <!-- Zero Server Upload Security Banner -->
+            <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: var(--radius-lg); padding: 0.75rem 1.25rem; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.75rem;">
+                <span style="font-size: 1.4rem;">🔒</span>
+                <div style="font-size: 0.82rem; color: #a7f3d0; line-height: 1.4;">
+                    <strong>100% Client-Side Local Processing:</strong> Excel (<code>.xlsx</code>, <code>.csv</code>) and SQLite (<code>.sqlite</code>) files are parsed entirely in your browser using WebAssembly. <strong>No data is ever uploaded to any external server.</strong>
+                </div>
+            </div>
+
+            <!-- Database Information Cards -->
+            <div class="stats-cards-grid" style="margin-bottom: 1.5rem;">
+                <div class="stat-card">
+                    <div class="stat-icon-wrap valuation">🗄️</div>
+                    <div class="stat-content">
+                        <span class="stat-label">Database Engine</span>
+                        <span class="stat-value" style="font-size: 1.1rem; color: var(--primary);">SQLite 3 (WASM)</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon-wrap units">📑</div>
+                    <div class="stat-content">
+                        <span class="stat-label">Active SQL Tables</span>
+                        <span class="stat-value" style="font-size: 1.1rem;">5 Tables</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon-wrap warning">⚡</div>
+                    <div class="stat-content">
+                        <span class="stat-label">Transactions</span>
+                        <span class="stat-value" style="font-size: 1.1rem; color: #38bdf8;">ACID Compliant</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interactive SQL Query Box -->
+            <div class="settings-card" style="margin-bottom: 1.5rem;">
+                <h3 class="settings-card-title">💻 Interactive SQL Console</h3>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.5rem;">
+                    <span style="font-size: 0.8rem; color: var(--text-muted);">Quick Query Presets:</span>
+                    <button class="btn btn-sm btn-secondary" onclick="document.getElementById('customSqlInput').value = 'SELECT id, name, sku, stock, price FROM products ORDER BY stock ASC;'">Products by Stock</button>
+                    <button class="btn btn-sm btn-secondary" onclick="document.getElementById('customSqlInput').value = 'SELECT record_date, sku, product_name, category, brand, current_stock, unit_price FROM stock_history_records ORDER BY id ASC LIMIT 25;'">Excel Stock Records (180)</button>
+                    <button class="btn btn-sm btn-secondary" onclick="document.getElementById('customSqlInput').value = 'SELECT bill_number, customer_name, grand_total, order_date FROM orders ORDER BY created_at DESC;'">Customer Orders</button>
+                    <button class="btn btn-sm btn-secondary" onclick="document.getElementById('customSqlInput').value = 'SELECT * FROM supplier_purchase_orders;'">Supplier POs</button>
+                    <button class="btn btn-sm btn-secondary" onclick="document.getElementById('customSqlInput').value = 'SELECT timestamp, action_type, product_name, delta, new_stock FROM stock_logs ORDER BY timestamp DESC LIMIT 20;'">Recent Stock Logs</button>
+                </div>
+
+                <div class="form-group">
+                    <textarea id="customSqlInput" class="msg-textarea" style="height: 110px;" spellcheck="false">SELECT id, name, sku, category, price, stock FROM products ORDER BY stock ASC;</textarea>
+                </div>
+
+                <div style="display: flex; gap: 0.6rem;">
+                    <button class="btn btn-primary" onclick="window.App.executeCustomSQL()">
+                        ▶️ Execute SQL Query
+                    </button>
+                    <button class="btn btn-secondary" onclick="document.getElementById('customSqlInput').value = ''; document.getElementById('sqlResultsContainer').innerHTML = '';">
+                        Clear
+                    </button>
+                </div>
+
+                <!-- Query Results Display -->
+                <div id="sqlResultsContainer" style="margin-top: 1rem; overflow-x: auto;">
+                    <!-- Rendered by App.executeCustomSQL() -->
+                </div>
+            </div>
+
+            <!-- SQLite Tables Schema Overview -->
+            <div class="settings-card">
+                <h3 class="settings-card-title">📋 SQLite Database Schema Architecture</h3>
+                <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: var(--text-secondary); background: #080b12; padding: 1rem; border-radius: var(--radius-md); line-height: 1.6;">
+                    <strong style="color: var(--primary);">TABLE products:</strong> (id TEXT PK, name TEXT, sku TEXT UNIQUE, category TEXT, price REAL, cost REAL, stock INTEGER, min_stock_alert INTEGER, unit TEXT, description TEXT)<br><br>
+                    <strong style="color: #38bdf8;">TABLE orders:</strong> (id TEXT PK, bill_number TEXT UNIQUE, customer_name TEXT, customer_phone TEXT, notes TEXT, subtotal REAL, discount_amount REAL, tax_amount REAL, grand_total REAL, payment_method TEXT, order_date TEXT, status TEXT)<br><br>
+                    <strong style="color: #fbbf24;">TABLE order_items:</strong> (id INTEGER PK AUTOINCREMENT, order_id TEXT FK, product_id TEXT FK, name TEXT, sku TEXT, unit TEXT, price REAL, quantity INTEGER, total REAL)<br><br>
+                    <strong style="color: #c084fc;">TABLE supplier_purchase_orders:</strong> (id TEXT PK, po_number TEXT UNIQUE, supplier_name TEXT, product_id TEXT, product_name TEXT, quantity INTEGER, cost_per_unit REAL, total_cost REAL, status TEXT, created_at TEXT)<br><br>
+                    <strong style="color: #f43f5e;">TABLE stock_logs:</strong> (id TEXT PK, timestamp TEXT, action_type TEXT, product_id TEXT, product_name TEXT, delta INTEGER, new_stock INTEGER, reference_id TEXT, details TEXT)
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================================================================
+             VIEW 6: Settings & Message Templates
+             ================================================================== -->
+        <section class="app-view" id="view-settings">
+            <div class="inventory-view-header">
+                <div>
+                    <h2 class="view-heading-title">Store Settings & Message Customization</h2>
+                    <p class="view-heading-desc">Configure business branding, currency, tax rules, WhatsApp & SMS message templates.</p>
+                </div>
+            </div>
+
+            <form id="storeSettingsForm">
+                <div class="settings-grid-layout">
+                    
+                    <div class="settings-card">
+                        <h3 class="settings-card-title">🏪 Store Identity</h3>
+                        <div class="form-group">
+                            <label class="form-label" for="settingStoreName">Store Name</label>
+                            <input type="text" id="settingStoreName" class="form-input" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="settingTagline">Store Tagline / Slogan</label>
+                            <input type="text" id="settingTagline" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="settingStorePhone">Store Helpline Phone</label>
+                            <input type="text" id="settingStorePhone" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="settingStoreAddress">Store Physical Address</label>
+                            <input type="text" id="settingStoreAddress" class="form-input">
+                        </div>
+                    </div>
+
+                    <div class="settings-card">
+                        <h3 class="settings-card-title">💵 Currency & Tax Settings</h3>
+                        <div class="form-group">
+                            <label class="form-label" for="settingCurrencySymbol">Currency Symbol</label>
+                            <input type="text" id="settingCurrencySymbol" class="form-input" maxlength="5" value="₹">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="settingDefaultTaxRate">Tax Rate (%) (e.g. GST / VAT)</label>
+                            <input type="number" id="settingDefaultTaxRate" class="form-input" min="0" max="100" step="0.5" value="18">
+                        </div>
+                        <label class="form-checkbox-row">
+                            <input type="checkbox" id="settingEnableTax" checked>
+                            <span class="form-label" style="margin: 0;">Enable Tax Calculation on Bills</span>
+                        </label>
+                        <div class="form-group">
+                            <label class="form-label" for="settingWhatsappPrefix">Default Country Calling Code</label>
+                            <input type="text" id="settingWhatsappPrefix" class="form-input" value="+91">
+                        </div>
+                    </div>
+
+                    <div class="settings-card" style="grid-column: 1 / -1;">
+                        <h3 class="settings-card-title">💬 Customer Message Templates (WhatsApp & SMS)</h3>
+                        <div class="form-group">
+                            <label class="form-label" for="settingMessageGreeting">Greeting Template (Supports {customer_name}, {store_name})</label>
+                            <input type="text" id="settingMessageGreeting" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="settingMessageFooter">Footer Note (Supports {store_phone}, {store_name})</label>
+                            <input type="text" id="settingMessageFooter" class="form-input">
+                        </div>
+                        <label class="form-checkbox-row">
+                            <input type="checkbox" id="settingIncludeItemDetailsInSMS" checked>
+                            <span class="form-label" style="margin: 0;">Include brief item names in SMS messages</span>
+                        </label>
+                        <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                            <button type="submit" class="btn btn-primary" id="btnSaveStoreSettings">
+                                💾 Save Settings & Message Formats
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </form>
+        </section>
+
+    </main>
+
+    <!-- ======================================================================
+         MODAL 1: Send Bill via Message Modal (WhatsApp / SMS / Clipboard)
+         ====================================================================== -->
+    <div class="app-modal" id="messageDispatchModal" role="dialog" aria-modal="true" aria-labelledby="msgModalTitle">
+        <div class="modal-dialog wide">
+            <div class="modal-header">
+                <div class="modal-title" id="msgModalTitle">
+                    <span>📲</span> Send Bill to Customer via Message
+                </div>
+                <button class="btn-modal-close" onclick="window.App.closeModal('messageDispatchModal')" title="Close">✕</button>
+            </div>
+
+            <div class="modal-body">
+                <div class="msg-customer-summary-card">
+                    <div class="msg-meta-box">
+                        <span class="msg-meta-lbl">Customer Name</span>
+                        <span class="msg-meta-val" id="modalCustomerName">John Doe</span>
+                    </div>
+                    <div class="msg-meta-box">
+                        <span class="msg-meta-lbl">Target Mobile</span>
+                        <span class="msg-meta-val" id="modalCustomerPhone">+91 9876543210</span>
+                    </div>
+                    <div class="msg-meta-box">
+                        <span class="msg-meta-lbl">Invoice No</span>
+                        <span class="msg-meta-val" id="modalInvoiceNumber">#QB-001</span>
+                    </div>
+                    <div class="msg-meta-box">
+                        <span class="msg-meta-lbl">Total Amount</span>
+                        <span class="msg-meta-val" id="modalInvoiceTotal">₹0</span>
+                    </div>
+                </div>
+
+                <div class="msg-channel-switcher">
+                    <button class="msg-channel-tab active" data-channel="whatsapp" onclick="window.App.setMessageTab('whatsapp')">
+                        <span>💬</span> WhatsApp Message Format
+                    </button>
+                    <button class="msg-channel-tab" data-channel="sms" onclick="window.App.setMessageTab('sms')">
+                        <span>📱</span> Compact SMS Format
+                    </button>
+                    <button class="msg-channel-tab" data-channel="receipt" onclick="window.App.setMessageTab('receipt')">
+                        <span>🧾</span> Digital E-Receipt Card
+                    </button>
+                </div>
+
+                <div class="msg-text-editor-wrap" id="messageTextContainer">
+                    <textarea id="messageTextPreview" class="msg-textarea" spellcheck="false"
+                              placeholder="Message preview will appear here..."></textarea>
+                    <span class="msg-preview-hint">💡 Tip: You can edit or add notes above before dispatching.</span>
+                </div>
+
+                <div id="messageReceiptCardContainer" style="display: none;"></div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="btnCopyMessageText" onclick="window.App.copyCurrentMessage()">
+                    📋 Copy Text
+                </button>
+                <div style="display: flex; gap: 0.6rem;">
+                    <button class="btn btn-whatsapp" id="btnActionSendWhatsApp" onclick="window.App.dispatchViaWhatsApp()">
+                        <span>🟢</span> Send on WhatsApp
+                    </button>
+                    <button class="btn btn-sms" id="btnActionSendSMS" style="display: none;" onclick="window.App.dispatchViaSMS()">
+                        <span>🔵</span> Send via SMS
+                    </button>
+                    <button class="btn btn-secondary" onclick="window.App.closeModal('messageDispatchModal')">
+                        Done
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ======================================================================
+         MODAL 2: Order Stock from Supplier (Purchase Order)
+         ====================================================================== -->
+    <div class="app-modal" id="supplierOrderModal" role="dialog" aria-modal="true" aria-labelledby="supplierOrderTitle">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <div class="modal-title" id="supplierOrderTitle">📦 Order Stock from Supplier</div>
+                <button class="btn-modal-close" onclick="window.App.closeModal('supplierOrderModal')" title="Close">✕</button>
+            </div>
+            <form onsubmit="window.Inventory.handleSupplierOrderSubmit(event)">
+                <div class="modal-body">
+                    <div class="form-group" style="margin-bottom: 0.85rem;">
+                        <label class="form-label" for="supplierOrderProductSelect">Select Product to Re-order *</label>
+                        <select id="supplierOrderProductSelect" class="form-select" required></select>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 0.85rem;">
+                        <label class="form-label" for="supplierOrderSupplierName">Supplier / Vendor Name *</label>
+                        <input type="text" id="supplierOrderSupplierName" class="form-input" placeholder="e.g. Apple Wholesale Distributor" value="Central Wholesale Logistics" required>
+                    </div>
+
+                    <div class="row-dual" style="margin-bottom: 0.85rem;">
+                        <div class="form-group">
+                            <label class="form-label" for="supplierOrderQuantity">Quantity to Order *</label>
+                            <input type="number" id="supplierOrderQuantity" class="form-input" min="1" value="20" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="supplierOrderCostInput">Cost Price per Unit (₹)</label>
+                            <input type="number" id="supplierOrderCostInput" class="form-input" min="0" step="0.5" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="supplierOrderExpectedDate">Expected Delivery Date / Timeline</label>
+                        <input type="text" id="supplierOrderExpectedDate" class="form-input" placeholder="e.g. In 2 days / Monday">
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="window.App.closeModal('supplierOrderModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Supplier Purchase Order</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ======================================================================
+         MODAL 3: Add / Edit Product Modal
+         ====================================================================== -->
+    <div class="app-modal" id="productFormModal" role="dialog" aria-modal="true" aria-labelledby="productModalTitle">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <div class="modal-title" id="productModalTitle">Add New Product to SQLite Database</div>
+                <button class="btn-modal-close" onclick="window.App.closeModal('productFormModal')" title="Close">✕</button>
+            </div>
+
+            <form id="productForm" onsubmit="window.Inventory.handleProductFormSubmit(event)">
+                <input type="hidden" id="productFormId">
+                <div class="modal-body">
+                    <div class="form-group" style="margin-bottom: 0.85rem;">
+                        <label class="form-label" for="productFormName">Product Title *</label>
+                        <input type="text" id="productFormName" class="form-input" placeholder="e.g. Sony Wireless Headphones" required>
+                    </div>
+
+                    <div class="row-dual" style="margin-bottom: 0.85rem;">
+                        <div class="form-group">
+                            <label class="form-label" for="productFormSku">SKU / Barcode *</label>
+                            <input type="text" id="productFormSku" class="form-input" placeholder="e.g. ELEC-SNY-01" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="productFormCategory">Category</label>
+                            <input type="text" id="productFormCategory" class="form-input" placeholder="e.g. Electronics" required>
+                        </div>
+                    </div>
+
+                    <div class="row-dual" style="margin-bottom: 0.85rem;">
+                        <div class="form-group">
+                            <label class="form-label" for="productFormPrice">Selling Price (₹) *</label>
+                            <input type="number" id="productFormPrice" class="form-input" min="0" step="0.5" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="productFormCost">Cost Price (₹)</label>
+                            <input type="number" id="productFormCost" class="form-input" min="0" step="0.5" value="0">
+                        </div>
+                    </div>
+
+                    <div class="row-dual" style="margin-bottom: 0.85rem;">
+                        <div class="form-group">
+                            <label class="form-label" for="productFormStock">Initial Stock Qty *</label>
+                            <input type="number" id="productFormStock" class="form-input" min="0" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="productFormMinAlert">Low Stock Alert Level</label>
+                            <input type="number" id="productFormMinAlert" class="form-input" min="1" value="5">
+                        </div>
+                    </div>
+
+                    <div class="row-dual" style="margin-bottom: 0.85rem;">
+                        <div class="form-group">
+                            <label class="form-label" for="productFormBatchNo">Batch / Lot Number</label>
+                            <input type="text" id="productFormBatchNo" class="form-input" placeholder="e.g. LOT-2026-09B">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="productFormExpiryDate">Expiry Date</label>
+                            <input type="date" id="productFormExpiryDate" class="form-input">
+                        </div>
+                    </div>
+
+                    <div class="row-dual" style="margin-bottom: 0.85rem;">
+                        <div class="form-group">
+                            <label class="form-label" for="productFormUnit">Measurement Unit</label>
+                            <input type="text" id="productFormUnit" class="form-input" placeholder="pcs, kg, box..." value="pcs">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="productFormDesc">Short Description</label>
+                            <input type="text" id="productFormDesc" class="form-input" placeholder="Key specs or features">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="window.App.closeModal('productFormModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="btnSaveProductForm">Save to SQLite Database</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ======================================================================
+         MODAL 4: Digital E-Receipt Card Preview Modal
+         ====================================================================== -->
+    <div class="app-modal" id="receiptPreviewModal" role="dialog" aria-modal="true" aria-labelledby="receiptModalTitle">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <div class="modal-title" id="receiptModalTitle">🧾 Digital E-Receipt View</div>
+                <button class="btn-modal-close" onclick="window.App.closeModal('receiptPreviewModal')" title="Close">✕</button>
+            </div>
+            <div class="modal-body" id="receiptPreviewModalContent"></div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="window.print()">🖨️ Print / Save PDF</button>
+                <button class="btn btn-primary" onclick="window.App.closeModal('receiptPreviewModal')">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+    <!-- Scripts (SheetJS Client-Side Excel Parser, SQLite WebAssembly, Data Layer, and Application Controllers) -->
+    <script src="lib/xlsx.full.min.js"></script>
+    <script src="lib/sql-wasm.js"></script>
+    <script src="lib/sql-wasm-binary.js"></script>
+    <script src="js/stocksense-data.js"></script>
+    <script src="js/sqlite-db.js"></script>
+    <script src="js/store.js"></script>
+    <script src="js/messaging.js"></script>
+    <script src="js/billing.js"></script>
+    <script src="js/inventory.js"></script>
+    <script src="js/demand-expiry.js"></script>
+    <script src="js/app.js"></script>
+
+</body>
+</html>
